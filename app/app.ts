@@ -60,7 +60,60 @@ const init = async (tokenSet?: any) => {
 
 app.get("/", (req: Request, res: Response) => {
   res.send(
-    `<h2>Welcome to Quickbook's NodeJS starter app</h2><p>Open this URL in a new window, then click Connect to Quickbook</p><a href='/connect'>Connect to Quickbook</a>`
+    `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>QuickBooks NodeJS Starter App</title>
+      <style>
+        body {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+          font-family: Arial, sans-serif;
+          background-color: #f0f0f0;
+        }
+        .container {
+          text-align: center;
+        }
+        .title {
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+        .description {
+          font-size: 16px;
+          margin-bottom: 20px;
+        }
+        .button {
+          display: inline-block;
+          padding: 10px 20px;
+          background-color: #007bff;
+          color: #fff;
+          text-decoration: none;
+          border-radius: 5px;
+          font-size: 16px;
+          transition: background-color 0.3s ease;
+        }
+        .button:hover {
+          background-color: #0056b3;
+        }
+      </style>
+      </head>
+      <body>
+
+      <div class="container">
+        <h2 class="title">Welcome to QuickBooks NodeJS Starter App</h2>
+        <p class="description">Open this URL in a new window, then click Connect to QuickBooks</p>
+        <a class="button" href="/connect">Connect to QuickBooks</a>
+      </div>
+
+      </body>
+    </html>
+    `
   );
 });
 
