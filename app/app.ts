@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import OAuthClient from 'intuit-oauth';
 import * as dotenv from 'dotenv';
 import { create, findOne, remove,  } from './db.handler';
+import { createBudget, createCustomer, createPayment, fetchBudgets, fetchCustomer } from "./client";
 dotenv.config();
 
 const session = require("express-session");
@@ -9,7 +10,6 @@ const session = require("express-session");
 const client_id: string = process.env.CLIENT_ID || "";
 const client_secret: string = process.env.CLIENT_SECRET || "";
 const redirectUrl: string = process.env.REDIRECT_URI || "";
-const baseUrl = `https://sandbox-quickbooks.api.intuit.com/v3/company`;
 
 const enum QuickBooksEnvironment { PRODUCTION = 'production', SANDBOX = 'sandbox' }
 
@@ -166,18 +166,7 @@ app.get("/budgets", async (req: Request, res: Response) => {
 
     const companyid = token.realmId;
 
-    const apiUrl = baseUrl + `/${companyid}/query`;
-
-    const response = await quickbook.makeApiCall({
-      url: apiUrl,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/text', // Set the desired Content-Type
-      },
-      body: 'Select * from Budget startposition 1 maxresults 5'
-    }).catch((error) => {
-      throw new Error(error.originalMessage + ':-> ' + error.error_description)
-    });
+    const response = await fetchBudgets(quickbook, companyid);
 
     const data = response.getJson()?.QueryResponse;
 
@@ -201,9 +190,7 @@ app.get("/newBudget", async (req: Request, res: Response) => {
 
     const companyid = token.realmId;
 
-    const apiUrl = baseUrl + `/${companyid}/budget`;
-
-    const postData = {
+    const response = await createBudget(quickbook, companyid, {
       Budget: {
         StartDate: "2024-03-12",
         BudgetEntryType: "Quarterly",
@@ -218,22 +205,7 @@ app.get("/newBudget", async (req: Request, res: Response) => {
           }
         ]
       }
-    };
-
-    const response = await quickbook.makeApiCall({
-      url: apiUrl,
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: postData,
-    }).catch((error) => {
-      console.log(error);
-      console.log(`${error.originalMessage}: ${error.error_description}`);
     });
-
-    console.log(response);
 
     res.send({ companyid });
   } catch (error) {
@@ -256,57 +228,22 @@ app.get("/newTransaction", async (req: Request, res: Response) => {
     const companyid = token.realmId;
 
     const name = 'John Ready Resturrant';
-    let apiUrl = baseUrl + `/${companyid}/query`;
-
-    let customerResponse = await quickbook.makeApiCall({
-      url: apiUrl,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/text', // Set the desired Content-Type
-      },
-      body: `select * from Customer Where DisplayName = '${name}'`
-    }).catch((error) => {
-      throw new Error(error?.message)
-    });
-
-    let existingCustomer = customerResponse?.json?.QueryResponse?.Customer?.[0] || {};
-    console.log('Existing Customer: ')
+    let existingCustomer = await fetchCustomer(quickbook, companyid, name);
 
     if(Object.keys(existingCustomer)?.length  === 0){
-      apiUrl = baseUrl + `/${companyid}/customer`;
-      customerResponse = await quickbook.makeApiCall({
-        url: apiUrl,
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: {
-          DisplayName: `${name}`,
-        },
+      existingCustomer = await createCustomer(quickbook, companyid, {
+        DisplayName: `${name}`,
       });
-
-      existingCustomer = customerResponse?.json?.Customer || {};
     }
 
 
-    apiUrl = baseUrl + `/${companyid}/payment`;
-    const paymentResponse = await quickbook.makeApiCall({
-      url: apiUrl,
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: {
-        TotalAmt: 25,
-        CustomerRef: {
-          value: existingCustomer.Id
-        }
-      },
+    const payment = await createPayment(quickbook, companyid, {
+      TotalAmt: 25,
+      CustomerRef: {
+        value: existingCustomer.Id
+      }
     });
-
-    const payment = paymentResponse.getJson()
+    
     return res.send({ companyid, customer: existingCustomer, payment });
   } catch (error) {
     console.log(error);
